@@ -1,4 +1,9 @@
+from collections import namedtuple
+
 from pymongo import MongoClient
+
+
+Checkin = namedtuple('Checkin', ['user', 'beer', 'score', 'tags'])
 
 
 class MongoExtractor:
@@ -10,6 +15,13 @@ class MongoExtractor:
         return self.collection.find({
             "data_type": "checkin",
             "tags.0": {"$exists": True}
+        })
+
+    def get_all_checking_with_tags_and_score(self):
+        return self.collection.find({
+            "data_type": "checkin",
+            "tags.0": {"$exists": True},
+            "score": {"$exists": True},
         })
 
     def get_min_max_score_for_all_users(self):
@@ -33,3 +45,17 @@ class MongoExtractor:
         client[db_name].authenticate(username, password)
         data_collection = client[db_name][data_collection_name]
         return cls(data_collection)
+
+
+def format_checkins(checkins):
+    """
+    Format all the checkins to obtain the following examples;
+    (user_name, beer_name, score, tags)
+    """
+    for checkin in checkins:
+        yield Checkin(
+            user=checkin['user_name'],
+            beer=checkin['beer_name'],
+            score=checkin['score'],
+            tags=checkin['tags'],
+        )
