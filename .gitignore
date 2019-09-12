@@ -4,3 +4,4 @@
 config
 .pytest_cache/
 scripts/results/
+data/
