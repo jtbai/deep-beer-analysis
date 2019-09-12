@@ -14,9 +14,9 @@ from pytoune.framework import Experiment as PytouneExperiment
 
 from repository.mongo_extractor import MongoExtractor
 from data_handling import create_vocabulary
-from nn.beer_to_taste_skipgram import BeerToTasteSkipgram, format_examples_for_neural_net, generate_skip_gram_examples
+from ml.beer_to_taste_skipgram import BeerToTasteSkipgram, format_examples_for_neural_net, generate_skip_gram_examples
 from repository.mongo_extractor import format_checkins
-from nn.similarities_callback import SimilaritiesCallback
+from ml.similarities_callback import SimilaritiesCallback
 
 
 MONGO_CONGIF_FILE_PATH = "config/mongo_connection_details.json"

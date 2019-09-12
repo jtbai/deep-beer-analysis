@@ -5,7 +5,7 @@ import random
 import numpy as np
 
 from repository.mongo_extractor import MongoExtractor, format_checkins
-from nn.beer_svd import BeerToTastePCA
+from ml.beer_svd import BeerToTastePCA
 
 
 MONGO_CONGIF_FILE_PATH = "config/mongo_connection_details.json"
