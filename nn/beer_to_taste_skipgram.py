@@ -1,6 +1,7 @@
 from typing import List
 from collections import namedtuple
 
+import torch
 from torch import nn
 import torch.nn.functional as F
 from repository.mongo_extractor import Checkin

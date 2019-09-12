@@ -1,9 +1,10 @@
 from collections import namedtuple
 
+import tqdm
 from pymongo import MongoClient
 
 
-Checkin = namedtuple('Checkin', ['user', 'beer', 'score', 'tags'])
+Checkin = namedtuple('Checkin', ['user', 'beer', 'score', 'tags', 'beer_type'])
 
 
 class MongoExtractor:
@@ -58,4 +59,5 @@ def format_checkins(checkins):
             beer=checkin['beer_name'],
             score=checkin['score'],
             tags=checkin['tags'],
+            beer_type=checkin['beer'][0]['type'] if len(checkin['beer']) > 0 else "None"
         )
