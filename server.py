@@ -1,0 +1,29 @@
+import pickle
+import torch
+from flask import Flask, escape, request
+from ml.beer_to_taste_skipgram import BeerToTasteSkipgram
+
+app = Flask(__name__)
+
+beer_to_idx = pickle.load(open('./data/beer_vocab.pkl', 'rb'))
+idx_to_beer = {i: b for b, i in beer_to_idx.items()}
+tag_to_idx = pickle.load(open('./data/tag_vocab.pkl', 'rb'))
+
+model = BeerToTasteSkipgram(beer_to_idx, idx_to_beer, tag_to_idx, 5)
+model.load_state_dict(torch.load('./scripts/results/LOL2/checkpoint.ckpt'))
+
+def format_beer_list(beers):
+    str = "<ul>{}</ul>"
+    beer_strs = ["<li>{}</li>".format(beer) for beer in beers]
+    return str.format(" ".join(beer_strs))
+
+@app.route('/')
+def hello():
+    name = request.args.get("name", "Catnip")
+    beer_idx = beer_to_idx[name]
+    beer_tensor = torch.LongTensor([beer_idx])
+    similar_beers = model.get_n_similar_beers(beer_tensor)
+    dissimilar_beers = model.get_n_not_similar_beers(beer_tensor)
+    similar_beers = [b for b, _ in similar_beers]
+    dissimilar_beers = [b for b, _ in dissimilar_beers]
+    return '<h1>Similar:</h1> {} <br/><br/> <h1>Dissimilar:</h1>: {}'.format(format_beer_list(similar_beers), format_beer_list(dissimilar_beers))
