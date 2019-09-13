@@ -1,7 +1,12 @@
+import json
 import pickle
 import torch
 from flask import Flask, escape, request
 from ml.beer_to_taste_skipgram import BeerToTasteSkipgram
+from repository.mongo_extractor import MongoExtractor
+
+MONGO_CONGIF_FILE_PATH = "config/mongo_connection_details.json"
+mongo_extractor = MongoExtractor.get_connection(json.load(open(MONGO_CONGIF_FILE_PATH)))
 
 app = Flask(__name__)
 
@@ -14,7 +19,7 @@ model.load_state_dict(torch.load('./scripts/results/LOL2/checkpoint.ckpt'))
 
 def format_beer_list(beers):
     str = "<ul>{}</ul>"
-    beer_strs = ["<li>{}</li>".format(beer) for beer in beers]
+    beer_strs = ["<li>{}: {}</li>".format(mongo_extractor.get_beer_brewery(beer), beer) for beer in beers]
     return str.format(" ".join(beer_strs))
 
 @app.route('/')

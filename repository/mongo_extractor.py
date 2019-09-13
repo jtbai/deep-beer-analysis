@@ -3,7 +3,6 @@ from collections import namedtuple
 import tqdm
 from pymongo import MongoClient
 
-
 Checkin = namedtuple('Checkin', ['user', 'beer', 'score', 'tags', 'beer_type'])
 
 
@@ -31,6 +30,10 @@ class MongoExtractor:
                 {"$group": {"_id": "$user_name", "nb_review": {"$sum": 1}, "maximum_score": {"$max": "$score"},
                             "minimum_score": {"$min": "$score"}}}
             ])
+
+    def get_beer_brewery(self, beer_name):
+        return self.collection.find_one({"data_type":"checkin","beer_name":beer_name}, {"brewery_name":True,"_id":False})['brewery_name']
+
 
     @classmethod
     def get_connection(cls, connection_configuration_details):
