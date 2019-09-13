@@ -1,3 +1,4 @@
+import pickle
 import logging
 import os
 import json
@@ -96,7 +97,8 @@ def main():
         'Limoiloise',
         'Nordet IPA',
         'Moralité',
-        'IPA du Nord-Est'
+        'IPA du Nord-Est',
+        'Herbe à Détourne'
     }
 
     callbacks = [
@@ -121,7 +123,8 @@ def main():
         for v in model.beer_embeddings.weight.data.tolist():
             vector_file.write("{}\n".format("\t".join([str(i) for i in v])))
 
-    import pdb; pdb.set_trace()
+    pickle.dump(beer_to_idx, open('./data/beer_vocab.pkl', 'wb'))
+    pickle.dump(tag_to_idx, open('./data/tag_vocab.pkl', 'wb'))
 
 
 if __name__ == '__main__':
