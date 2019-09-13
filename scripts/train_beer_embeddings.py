@@ -113,17 +113,15 @@ def main():
     sorted_beer_names = [v[0] for v in sorted(beer_to_idx.items(), key=operator.itemgetter(1))]
     sorted_tag_names = [v[0] for v in sorted(tag_to_idx.items(), key=operator.itemgetter(1))]
 
-    with open("beers.tsv", 'w') as beer_file:
+    with open("vector_model/beers.tsv", 'w') as beer_file:
         for name in sorted_beer_names:
             beer_file.write("{}\t{}\n".format(name, beer_to_beertype[name]))
 
-    with open("beers_vectors.tsv", "w") as vector_file:
+    with open("vector_model/beers_vectors.tsv", "w") as vector_file:
         for v in model.beer_embeddings.weight.data.tolist():
             vector_file.write("{}\n".format("\t".join([str(i) for i in v])))
 
     import pdb; pdb.set_trace()
-    # TODO: Save the embeddings to files
-
 
 
 if __name__ == '__main__':
