@@ -12,6 +12,7 @@ class MongoExtractor:
         self.collection = collection
         self.beer_locations = None
         self.beer_breweries = None
+        self.beer_types = None
 
     def get_all_checking_with_tags(self):
         return self.collection.find({
@@ -49,6 +50,16 @@ class MongoExtractor:
 
         return self._get_beers_locations()
 
+    def _get_beers_types(self):
+        if self.beer_types:
+            return self.beer_types
+        else:
+            dataset = self.collection.find({}, {"name": True, "type": True, "_id": False})
+            self.beer_types = {document['name']: document['type'] for document in dataset}
+
+        return self._get_beers_types()
+
+
     def get_beer_brewery(self, beer_name):
         beer_brewery = self._get_beers_brewery()
         return beer_brewery.get(beer_name, "unknown")
@@ -57,10 +68,13 @@ class MongoExtractor:
         beer_location = self._get_beers_locations()
         return beer_location.get(beer_name, "unknown")
 
+    def get_beer_type(self, beer_name):
+        beer_types = self._get_beers_types()
+        return beer_types.get(beer_name, "unknown")
+
 
     def get_local_beers(self, local):
         beer_location = self._get_beers_locations()
-        # print(beer_location)
         return {name for name, location  in beer_location.items() if len(re.findall(local,location))>0}
 
     @classmethod

@@ -25,11 +25,11 @@ def is_regional_beer(beer, region):
     print(beer, location)
     return re.match(location, region)
 
-def format_beer_list_with_brewery(beers):
+def format_beer_with_base_info(beers):
     str = "<ul>{}</ul>"
-    beer_strs = ["<li>{}: {}</li>".format(mongo_extractor.get_beer_brewery(beer), beer) for beer in beers]
+    beer_strs = ["<li><b>{0}</b>: <a href='/beer?name={1}'>{1}</a> ({2})</li>".format(mongo_extractor.get_beer_brewery(beer), beer, mongo_extractor.get_beer_type(beer)) for beer in beers]
+    beer_strs.sort()
     return str.format(" ".join(beer_strs))
-
 
 def format_beer_list(beers):
     str = "<ul>{}</ul>"
@@ -38,29 +38,31 @@ def format_beer_list(beers):
 
 @app.route('/')
 def home():
-    return format_beer_list([b for b, _ in beer_to_idx.items()])
+    local = request.args.get("local", "")
+    local_beers = mongo_extractor.get_local_beers(local)
+    html_output = "<h1><a href=/?local=QC>Québec</a> | <a href=/?local=Canada>Canada</a> | <a href=/?local=VT>Vermont</a> | <a href=/?local=>All</a></h1>"
+    html_output += format_beer_with_base_info([b for b, _ in beer_to_idx.items() if b in local_beers])
+    return html_output
 
 @app.route('/beer')
 def beer():
     name = request.args.get("name", "Catnip")
     beer_idx = beer_to_idx[name]
     beer_tensor = torch.LongTensor([beer_idx])
-    # similar_beers = model.get_n_similar_beers(beer_tensor, 100)
-    # dissimilar_beers = model.get_n_not_similar_beers(beer_tensor, 100)
 
     beer_similarities = model.get_beer_similarities(beer_tensor)
     local_beers = mongo_extractor.get_local_beers("QC")
-    print(local_beers)
     similar_local_beer = [(name, score) for name, score in beer_similarities if name in local_beers]
 
     similar_beers = [b for b, _ in similar_local_beer][-10:]
     dissimilar_beers = [b for b, _ in similar_local_beer][:10]
 
-    return '<h1>{} - {}</h1>' \
+    return '<a href=/>Home</a>  ' \
+           '<h1>{} - {} ({})</h1>' \
            '<h1>Similar:</h1> {} <br/><br/> ' \
-           '<h1>Dissimilar:</h1> {}'.format(mongo_extractor.get_beer_brewery(name), name,
-        format_beer_list_with_brewery(similar_beers),
-        format_beer_list_with_brewery(dissimilar_beers))
+           '<h1>Dissimilar:</h1> {}'.format(mongo_extractor.get_beer_brewery(name), name, mongo_extractor.get_beer_type(name),
+                                            format_beer_with_base_info(similar_beers),
+                                            format_beer_with_base_info(dissimilar_beers))
 
 if __name__== "__main__":
     app.run(debug=True)
