@@ -1,0 +1,9 @@
+Poutyne.egg==info
+Flask==1.0.2
+torch==1.2.0
+numpy==1.15.4
+pymongo==3.7.2
+tqdm==4.28.1
+pytoune==0.5.1
+scikit_learn==0.21.3
+typing==3.7.4.1
