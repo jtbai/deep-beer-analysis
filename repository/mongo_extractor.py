@@ -1,5 +1,5 @@
 from collections import namedtuple
-
+import re
 import tqdm
 from pymongo import MongoClient
 
@@ -10,30 +10,58 @@ class MongoExtractor:
 
     def __init__(self, collection):
         self.collection = collection
+        self.beer_locations = None
+        self.beer_breweries = None
 
     def get_all_checking_with_tags(self):
         return self.collection.find({
-            "data_type": "checkin",
             "tags.0": {"$exists": True}
         })
 
     def get_all_checking_with_tags_and_score(self):
         return self.collection.find({
-            "data_type": "checkin",
             "tags.0": {"$exists": True},
             "score": {"$exists": True},
         })
 
     def get_min_max_score_for_all_users(self):
         return self.collection.aggregate([
-                {"$match": {"data_type": "checkin", "score": {"$gt": 0}}},
+                {"$match": {"score": {"$gt": 0}}},
                 {"$group": {"_id": "$user_name", "nb_review": {"$sum": 1}, "maximum_score": {"$max": "$score"},
                             "minimum_score": {"$min": "$score"}}}
             ])
 
-    def get_beer_brewery(self, beer_name):
-        return self.collection.find_one({"data_type":"checkin","beer_name":beer_name}, {"brewery_name":True,"_id":False})['brewery_name']
+    def _get_beers_brewery(self):
+        if self.beer_breweries:
+            return self.beer_breweries
+        else:
+            dataset = self.collection.find({}, {"name":True ,"brewery_name":True,"_id":False})
+            self.beer_breweries = {document['name']: document['brewery_name'] for document in dataset}
 
+        return self._get_beers_brewery()
+
+    def _get_beers_locations(self):
+        if self.beer_locations:
+            return self.beer_locations
+        else:
+            dataset = self.collection.find({}, {"name": True, "brewery_location": True, "_id": False})
+            self.beer_locations = {document['name']: document['brewery_location'] for document in dataset}
+
+        return self._get_beers_locations()
+
+    def get_beer_brewery(self, beer_name):
+        beer_brewery = self._get_beers_brewery()
+        return beer_brewery.get(beer_name, "unknown")
+
+    def get_beer_location(self, beer_name):
+        beer_location = self._get_beers_locations()
+        return beer_location.get(beer_name, "unknown")
+
+
+    def get_local_beers(self, local):
+        beer_location = self._get_beers_locations()
+        # print(beer_location)
+        return {name for name, location  in beer_location.items() if len(re.findall(local,location))>0}
 
     @classmethod
     def get_connection(cls, connection_configuration_details):

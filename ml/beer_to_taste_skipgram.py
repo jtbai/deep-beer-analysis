@@ -46,6 +46,13 @@ class BeerToTasteSkipgram(nn.Module):
 
         return [(self.idx_to_beer[i], v) for i, v in zip(topk_indices[1:], topk_values[1:])]  # Here we skip the self token
 
+    def get_beer_similarities(self, beer):
+        beer_embedding = self.beer_embeddings(beer)
+        others = self.beer_embeddings.weight
+        similarities = F.cosine_similarity(beer_embedding, others)
+        values, indices = similarities.sort()
+
+        return [(self.idx_to_beer[i], v) for i, v in zip(indices.tolist()[1:], values.tolist()[1:])]  # Here we skip the self token
 
     def forward(self, beers):
         return torch.matmul(self.beer_embeddings(beers), self.tag_embeddings.weight.transpose(0, 1))
