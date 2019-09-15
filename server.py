@@ -3,11 +3,11 @@ import pickle
 import torch
 from flask import Flask, escape, request
 from ml.beer_to_taste_skipgram import BeerToTasteSkipgram
-from repository.mongo_extractor import MongoExtractor
+from repository.mongo_beer_extractor import MongoBeerExtractor
 import re
 
-MONGO_CONGIF_FILE_PATH = "config/cache_mongo_connection_details.json"
-mongo_extractor = MongoExtractor.get_connection(json.load(open(MONGO_CONGIF_FILE_PATH)))
+MONGO_CONGIF_FILE_PATH = "config/beer_mongo_connection_details.json"
+mongo_extractor = MongoBeerExtractor.get_connection(json.load(open(MONGO_CONGIF_FILE_PATH)))
 
 app = Flask(__name__)
 
@@ -16,7 +16,7 @@ idx_to_beer = {i: b for b, i in beer_to_idx.items()}
 tag_to_idx = pickle.load(open('./data/tag_vocab.pkl', 'rb'))
 
 model = BeerToTasteSkipgram(beer_to_idx, idx_to_beer, tag_to_idx, 5)
-model.load_state_dict(torch.load('./scripts/results/LOL2/checkpoint.ckpt'))
+model.load_state_dict(torch.load('./vector_model/embedding_model'))
 model = model.eval()
 
 
@@ -27,7 +27,7 @@ def is_regional_beer(beer, region):
 
 def format_beer_with_base_info(beers):
     str = "<ul>{}</ul>"
-    beer_strs = ["<li><b>{0}</b>: <a href='/beer?name={1}'>{1}</a> ({2})</li>".format(mongo_extractor.get_beer_brewery(beer), beer, mongo_extractor.get_beer_type(beer)) for beer in beers]
+    beer_strs = ["<li><b>{0}</b>: <a href='/beer?name={1}'>{1}</a> ({2}) | {3}</li>".format(mongo_extractor.get_beer_brewery(beer), beer, mongo_extractor.get_beer_type(beer), mongo_extractor.get_beer_score(beer)) for beer in beers]
     beer_strs.sort()
     return str.format(" ".join(beer_strs))
 
@@ -65,4 +65,4 @@ def beer():
                                             format_beer_with_base_info(dissimilar_beers))
 
 if __name__== "__main__":
-    app.run(debug=True)
+    app.run(debug=False, host="0.0.0.0", port=5000)

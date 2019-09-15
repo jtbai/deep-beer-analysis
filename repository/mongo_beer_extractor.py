@@ -6,31 +6,14 @@ from pymongo import MongoClient
 Checkin = namedtuple('Checkin', ['user', 'beer', 'score', 'tags', 'beer_type'])
 
 
-class MongoExtractor:
+class MongoBeerExtractor:
 
     def __init__(self, collection):
         self.collection = collection
         self.beer_locations = None
+        self.beer_scores = None
         self.beer_breweries = None
         self.beer_types = None
-
-    def get_all_checking_with_tags(self):
-        return self.collection.find({
-            "tags.0": {"$exists": True}
-        })
-
-    def get_all_checking_with_tags_and_score(self):
-        return self.collection.find({
-            "tags.0": {"$exists": True},
-            "score": {"$exists": True},
-        })
-
-    def get_min_max_score_for_all_users(self):
-        return self.collection.aggregate([
-                {"$match": {"score": {"$gt": 0}}},
-                {"$group": {"_id": "$user_name", "nb_review": {"$sum": 1}, "maximum_score": {"$max": "$score"},
-                            "minimum_score": {"$min": "$score"}}}
-            ])
 
     def _get_beers_brewery(self):
         if self.beer_breweries:
@@ -59,6 +42,19 @@ class MongoExtractor:
 
         return self._get_beers_types()
 
+    def _get_beers_scores(self):
+        if self.beer_scores:
+            return self.beer_scores
+        else:
+            dataset = self.collection.find({}, {"name": True, "score": True, "_id": False})
+            self.beer_scores = {document['name']: document['score'] for document in dataset}
+
+        return self._get_beers_scores()
+
+
+    def get_beer_score(self, beer_name):
+        beer_scores = self._get_beers_scores()
+        return beer_scores.get(beer_name, "unknown")
 
     def get_beer_brewery(self, beer_name):
         beer_brewery = self._get_beers_brewery()
@@ -92,17 +88,3 @@ class MongoExtractor:
         data_collection = client[db_name][data_collection_name]
         return cls(data_collection)
 
-
-def format_checkins(checkins):
-    """
-    Format all the checkins to obtain the following examples;
-    (user_name, beer_name, score, tags)
-    """
-    for checkin in checkins:
-        yield Checkin(
-            user=checkin['user_name'],
-            beer=checkin['beer_name'],
-            score=checkin['score'],
-            tags=checkin['tags'],
-            beer_type=checkin['beer'][0]['type'] if len(checkin['beer']) > 0 else "None"
-        )

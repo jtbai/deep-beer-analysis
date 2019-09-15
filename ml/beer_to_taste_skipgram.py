@@ -4,7 +4,7 @@ from collections import namedtuple
 import torch
 from torch import nn
 import torch.nn.functional as F
-from repository.mongo_extractor import Checkin
+from repository.mongo_beer_extractor import Checkin
 
 SkipgramExample = namedtuple('SkipgramExample', ['beer', 'tag'])
 

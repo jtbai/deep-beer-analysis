@@ -3,7 +3,7 @@ from typing import List
 from sklearn.decomposition import PCA, SparsePCA
 import numpy as np
 
-from repository.mongo_extractor import Checkin
+from repository.mongo_beer_extractor import Checkin
 from data_handling import create_vocabulary
 
 class BeerToTastePCA:

@@ -1,4 +1,4 @@
-from repository.mongo_extractor import MongoExtractor
+from repository.mongo_beer_extractor import MongoBeerExtractor
 from unittest import TestCase
 import json
 
@@ -8,7 +8,7 @@ class TestMongoExtractor(TestCase):
 
     def setUp(self):
         connection_details = json.load(open(MONGO_CONGIF_FILE_PATH))
-        self.mongo_extractor = MongoExtractor.get_connection(connection_details)
+        self.mongo_extractor = MongoBeerExtractor.get_connection(connection_details)
 
     def test_request_for_cheking_works(self):
         checkin_with_tags = self.mongo_extractor.get_all_checking_with_tags()

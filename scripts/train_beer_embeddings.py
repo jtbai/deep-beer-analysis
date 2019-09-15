@@ -12,15 +12,16 @@ import torch
 from torch.utils.data import DataLoader
 
 from pytoune.framework import Experiment as PytouneExperiment
+from poutyne.framework import Model
 
-from repository.mongo_extractor import MongoExtractor
+from repository.mongo_checkin_extractor import MongoCheckinExtractor
 from data_handling import create_vocabulary
 from ml.beer_to_taste_skipgram import BeerToTasteSkipgram, format_examples_for_neural_net, generate_skip_gram_examples
-from repository.mongo_extractor import format_checkins
+from repository.mongo_checkin_extractor import format_checkins
 from ml.similarities_callback import SimilaritiesCallback
 
-
-MONGO_CONGIF_FILE_PATH = "config/mongo_connection_details.json"
+MODEL_DUMP_PATH = "./vector_model/embedding_model"
+MONGO_CONGIF_FILE_PATH = "config/checkin_mongo_connection_details.json"
 
 
 def get_source_directory(directory_name):
@@ -35,7 +36,7 @@ def get_experiment_directory(directory_name):
 
 def main():
     logging.info("Getting MongoDB connection")
-    mongo_extractor = MongoExtractor.get_connection(json.load(open(MONGO_CONGIF_FILE_PATH)))
+    mongo_extractor = MongoCheckinExtractor.get_connection(json.load(open(MONGO_CONGIF_FILE_PATH)))
 
     logging.info("Getting checkins with tags")
     checkins = mongo_extractor.get_all_checking_with_tags_and_score()
@@ -79,18 +80,18 @@ def main():
     else:
         logging.info("Training on CPU")
 
-
     model = BeerToTasteSkipgram(beer_to_idx, idx_to_beer, tag_to_idx, 5)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    expt = PytouneExperiment(
-        expt_dir,
-        model,
-        device=device,
-        optimizer=optimizer,
-        monitor_metric='val_loss',
-        monitor_mode='min'
-    )
+    trainable_model = Model(model, optimizer, model.loss_function)
+    # expt = PytouneExperiment(
+    #     expt_dir,
+    #     model,
+    #     device=device,
+    #     optimizer=optimizer,
+    #     monitor_metric='val_loss',
+    #     monitor_mode='min'
+    # )
 
     beers_to_check = {
         'Catnip',
@@ -100,14 +101,22 @@ def main():
         'IPA du Nord-Est',
         'Herbe à Détourne'
     }
+    #
+    # callbacks = [
+    #     SimilaritiesCallback(beer_to_idx, beers_to_check)
+    # ]
 
-    callbacks = [
-        SimilaritiesCallback(beer_to_idx, beers_to_check)
-    ]
-
+    callbacks = None
 
     try:
-        expt.train(train_loader, valid_loader, callbacks=callbacks, seed=42, epochs=200)
+        seed = 42
+
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
+        trainable_model.fit_generator(train_loader, valid_loader, callbacks=callbacks, epochs=300)
+        # expt.train(train_loader, valid_loader, callbacks=callbacks, seed=42, epochs=300)
         pass
     except KeyboardInterrupt:
         print('-' * 89)
@@ -125,6 +134,7 @@ def main():
 
     pickle.dump(beer_to_idx, open('./data/beer_vocab.pkl', 'wb'))
     pickle.dump(tag_to_idx, open('./data/tag_vocab.pkl', 'wb'))
+    torch.save(model.state_dict(), MODEL_DUMP_PATH)
 
 
 if __name__ == '__main__':

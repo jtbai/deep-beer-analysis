@@ -4,7 +4,7 @@ import random
 
 import numpy as np
 
-from repository.mongo_extractor import MongoExtractor, format_checkins
+from repository.mongo_beer_extractor import MongoBeerExtractor, format_checkins
 from ml.beer_svd import BeerToTastePCA
 
 
@@ -13,7 +13,7 @@ MONGO_CONGIF_FILE_PATH = "config/mongo_connection_details.json"
 
 def main():
     logging.info("Getting MongoDB connection")
-    mongo_extractor = MongoExtractor.get_connection(json.load(open(MONGO_CONGIF_FILE_PATH)))
+    mongo_extractor = MongoBeerExtractor.get_connection(json.load(open(MONGO_CONGIF_FILE_PATH)))
 
     logging.info("Getting checkins with tags")
     checkins = mongo_extractor.get_all_checking_with_tags_and_score()
