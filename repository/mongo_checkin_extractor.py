@@ -21,6 +21,10 @@ class MongoCheckinExtractor:
             "score": {"$exists": True},
         })
 
+    def get_all_checking_for_beer(self, beer_name):
+        return list(self.collection.find({"beer_name":beer_name, "review":{"$ne":""}, "score":{"$gt":0}},{"user_name":1, "score":1, "review":1,"tags":1}).sort([("score",1)]))
+
+
     def get_min_max_score_for_all_users(self):
         return self.collection.aggregate([
                 {"$match": {"score": {"$gt": 0}}},

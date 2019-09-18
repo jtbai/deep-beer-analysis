@@ -27,15 +27,32 @@ def format_top_taste(tastes):
     max_proximity = max([x[1] for x in tastes])
     output = "<ul>"
     for taste, proximity in tastes:
-       output += "<li>{} : {:2.0f}</li>".format(taste, proximity/max_proximity*100)
+       output += "<li>{} : {:2.0f}</li>".format(taste, proximity/total_proximity*100)
     output += "</ul>"
 
     return output
+
+def format_dictionary_for_select_dropdown(idx_to_value):
+    options = "<option value=-1></option>"
+    options += " ".join(["<option value={}>{}</option>".format(idx, value) for idx, value in idx_to_value.items()])
+    return options
 
 def is_regional_beer(beer, region):
     location = beer_extractor.get_beer_location(beer)
     print(beer, location)
     return re.match(location, region)
+
+def prepare_request_data_for_requested_profile(request_data):
+    print(request_data)
+    requested_profile = []
+    for taste_number in range(5):
+        taste_field = "profile_{}".format(taste_number)
+        proportion_field = "proportion_{}".format(taste_number)
+        if taste_field in request_data:
+            if request_data[taste_field] != '-1':
+                requested_profile.append((int(request_data[taste_field]), float(request_data[proportion_field])))
+
+    return requested_profile
 
 def format_beer_with_base_info(beers):
     str = "<ul>{}</ul>"
@@ -57,28 +74,45 @@ def format_checkin(checkin_list):
 def home():
     local = request.args.get("local", "")
     local_beers = beer_extractor.get_local_beers(local)
-    html_output = "<html><head><title>beer2vec</title></head><body><h1><a href=/?local=QC>Québec</a> | <a href=/?local=Canada>Canada</a> | <a href=/?local=VT>Vermont</a> | <a href=/?local=>All</a></h1>"
+    html_output = "<html><head><title>beer2vec</title></head><body>" \
+                  "<h1><a href=/similar_beer>Build a beer</a></h1>" \
+                  "<h1><a href=/?local=QC>Québec</a> | <a href=/?local=Canada>Canada</a> | <a href=/?local=VT>Vermont</a> | <a href=/?local=>All</a></h1>"
     html_output += format_beer_with_base_info([b for b, _ in beer_to_idx.items() if b in local_beers])
     html_output += "</body></html>"
     return html_output
 
-@app.route('/similar_beer')
+@app.route('/similar_beer', methods=["GET", "POST"])
 def similar_beer():
-    test_values = [(113, 50), (88, 20), (52, 20), (13, 10)]  # (IPA, fruité, avec un peu de bois)
-    test_values =  [(250,20),(237,30),(58,50)] # (Stout vanille en barique)
+    if request.method == "POST":
+        requested_profile = prepare_request_data_for_requested_profile(request.form)
+        # test_values = [(113, 50), (88, 20), (52, 20), (13, 10)]  # (IPA, fruité, avec un peu de bois)
+        # test_values =  [(250,20),(237,30),(58,50)] # (Stout vanille en barique)
+        print(requested_profile)
+        proportion_tensors = [(torch.LongTensor([idx]), proportion) for idx, proportion in requested_profile]
 
-    proportion_tensors = [(torch.LongTensor([idx]), proportion) for idx, proportion in test_values]
+        local_beers = beer_extractor.get_local_beers("QC")
+        most_similar_beer = model.create_beer_vector(proportion_tensors)
+        local_similar_beer = [(name, score) for name, score in most_similar_beer if name in local_beers]
+        local_similar_beer.sort(key=lambda x: x[1], reverse=True)
 
-    local_beers = beer_extractor.get_local_beers("QC")
-    most_similar_beer = model.create_beer_vector(proportion_tensors)
-    local_similar_beer = [(name, score) for name, score in most_similar_beer if name in local_beers]
-    local_similar_beer.sort(key=lambda x: x[1], reverse=True)
+        output = "<a href=/>Home</a>" \
+                 "<h1><a href=/similar_beer>Build a beer</a></h1>".format()
+        output += "<h2>Requested Profile</h2>"
+        output += format_top_taste([(model.idx_to_tag[idx], proportion) for idx, proportion in requested_profile])
+        output += "<h2>Suggested drink</h2>"
+        output += format_beer_with_base_info([b for b, _ in local_similar_beer[0:10]])
 
-    output = "<h1>Build a beer</1>"
-    output += "<h2>Requested Profile</h2>"
-    output += format_top_taste([(model.idx_to_tag[idx], proportion) for idx, proportion in test_values])
-    output += "<h2>Suggested drink</h2>"
-    output += format_beer_with_base_info([b for b, _ in local_similar_beer[0:10]])
+    elif request.method == "GET":
+
+        output = "<a href=/>Home</a>" \
+                 "<h1><a href=/similar_beer>Build a beer</a></h1>".format()
+        output += "<h2>Requested Profile</h2>"
+        output += "<form name=request_profile method=POST action=/similar_beer>"
+        for taste_number in range(5):
+            output += "<label for=proportion_{0}>Flavor {0}</label> " \
+                      "<select name=profile_{0}>{1}</select> " \
+                      "<input text name=proportion_{0} size=4></br>".format(taste_number, format_dictionary_for_select_dropdown(model.idx_to_tag))
+        output += "</br><input type=submit value=Chercher></form>"
 
     return output
 
