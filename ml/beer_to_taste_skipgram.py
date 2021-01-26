@@ -57,16 +57,23 @@ class BeerToTasteSkipgram(nn.Module):
 
         return [(self.idx_to_beer[i], v) for i, v in zip(indices.tolist()[1:], values.tolist()[1:])]  # Here we skip the self token
 
-    def create_beer_vector(self, tags_with_proportion):
+    def create_beer_vector(self, base_beer_idx, tags_with_proportion):
         total_proprotion = sum([proportion for _, proportion in tags_with_proportion])
-        beer_vector = np.zeros(self.embedding_dimension, dtype=np.float32)
+        if base_beer_idx != -1:
+            beer_embedding = self.beer_embeddings.weight[torch.LongTensor([base_beer_idx]),:].detach().numpy()
+            total_proprotion += 100
+        else:
+            beer_embedding = np.zeros(self.embedding_dimension, dtype=np.float32)
         for idx, proportion in tags_with_proportion:
-            beer_vector += np.array(self.tag_embeddings(idx).squeeze(0).detach().numpy()*proportion/total_proprotion)
+            beer_embedding += np.array(self.tag_embeddings(idx).squeeze(0).detach().numpy()*proportion/total_proprotion)
 
-        beer_tensor = torch.from_numpy(beer_vector)
+        beer_tensor = torch.from_numpy(beer_embedding)
         beer_similarity = torch.matmul(beer_tensor, self.beer_embeddings.weight.transpose(0, 1)).squeeze().detach().numpy()
 
         return [(self.idx_to_beer[idx], similarity) for idx, similarity in enumerate(beer_similarity)]
+
+    def get_tag_embedding(self):
+        return self.tag_embeddings.weight.detach().numpy()
 
 
     def get_beer_flavors(self, beer, topn):

@@ -84,7 +84,7 @@ class MongoBeerExtractor:
         password = connection_configuration_details["password"]
 
         client = MongoClient(host=host, port=port)
-        client[db_name].authenticate(username, password)
+        # client[db_name].authenticate(username, password)
         data_collection = client[db_name][data_collection_name]
         return cls(data_collection)
 

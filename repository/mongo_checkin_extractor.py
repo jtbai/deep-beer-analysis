@@ -24,6 +24,48 @@ class MongoCheckinExtractor:
     def get_all_checking_for_beer(self, beer_name):
         return list(self.collection.find({"beer_name":beer_name, "review":{"$ne":""}, "score":{"$gt":0}},{"user_name":1, "score":1, "review":1,"tags":1}).sort([("score",1)]))
 
+    def get_tag_top_count(self, count):
+
+        return list(self.collection.aggregate([
+
+                {
+                    '$unwind': {
+                        'path': '$tags'
+                    }
+                }, {
+                '$match': {
+                    'tags': {
+                        '$ne': ''
+                    }
+                }
+            }, {
+                '$group': {
+                    '_id': {
+                        'tags': '$tags'
+                    },
+                    'total_count': {
+                        '$sum': 1
+                    }
+                }
+            }, {
+                '$sort': {
+                    'total_count': -1
+                }
+            }, {
+                '$limit': count
+            }, {
+                '$project': {
+                    '_id.tags': 1,
+                    'total_count': 1
+                }
+            },{
+                '$sort': {
+                    '_id.tags': 1
+                }
+            }
+
+        ]))
+
 
     def get_min_max_score_for_all_users(self):
         return self.collection.aggregate([
@@ -43,7 +85,7 @@ class MongoCheckinExtractor:
         password = connection_configuration_details["password"]
 
         client = MongoClient(host=host, port=port)
-        client[db_name].authenticate(username, password)
+        # client[db_name].authenticate(username, password)
         data_collection = client[db_name][data_collection_name]
         return cls(data_collection)
 

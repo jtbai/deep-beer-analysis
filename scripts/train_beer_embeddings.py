@@ -11,7 +11,7 @@ import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from pytoune.framework import Experiment as PytouneExperiment
+from poutyne.framework import Experiment as Experiment
 from poutyne.framework import Model
 
 from repository.mongo_checkin_extractor import MongoCheckinExtractor
@@ -70,7 +70,7 @@ def main():
 
     expt_dir = get_experiment_directory("LOL2")
 
-    device_id = 1
+    device_id = 0
     device = None
     if torch.cuda.is_available():
         torch.cuda.set_device(device_id) # Fix bug where memory is allocated on GPU0 when ask to take GPU1.

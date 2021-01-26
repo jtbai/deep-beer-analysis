@@ -1,7 +1,7 @@
 import logging
 
 import torch
-from pytoune.framework.callbacks import Callback
+from poutyne.framework.callbacks import Callback
 
 
 class SimilaritiesCallback(Callback):
@@ -16,7 +16,7 @@ class SimilaritiesCallback(Callback):
             word_idx = self.beer_to_idx[word]
             word_tensor = torch.LongTensor([word_idx])
             if torch.cuda.is_available():
-                word_tensor = word_tensor.cuda(device)
+                word_tensor = word_tensor.cuda(0)
 
             similar_words = self.model.model.get_n_similar_beers(word_tensor, n=5)
             logging.info("Most similar beers:")

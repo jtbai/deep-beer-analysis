@@ -7,10 +7,11 @@ from repository.mongo_beer_extractor import MongoBeerExtractor
 from repository.mongo_checkin_extractor import MongoCheckinExtractor
 import re
 import html
-
+import numpy as np
 
 BEER_MONGO_CONGIF_FILE_PATH = "config/beer_mongo_connection_details.json"
 CHECKIN_MONGO_CONGIF_FILE_PATH = "config/checkin_mongo_connection_details.json"
+NB_TOP_TASTE = 75
 beer_extractor = MongoBeerExtractor.get_connection(json.load(open(BEER_MONGO_CONGIF_FILE_PATH)))
 checking_extractor = MongoCheckinExtractor.get_connection(json.load(open(CHECKIN_MONGO_CONGIF_FILE_PATH)))
 
@@ -25,7 +26,7 @@ model.load_state_dict(torch.load('./vector_model/embedding_model'))
 model = model.eval()
 
 def format_top_taste(tastes):
-    total_proximity = sum([x[1] for x in tastes])
+    total_proximity = sum([abs(x[1]) for x in tastes])
     max_proximity = max([x[1] for x in tastes])
     output = "<ul>"
     for taste, proximity in tastes:
@@ -48,11 +49,13 @@ def format_dictionary_for_select_dropdown(idx_to_value):
 
 def is_regional_beer(beer, region):
     location = beer_extractor.get_beer_location(beer)
-    print(beer, location)
     return re.match(location, region)
 
+def prepare_request_data_for_base_beer(request_data):
+    return int(request_data['base_beer'])
+
+
 def prepare_request_data_for_requested_profile(request_data):
-    print(request_data)
     requested_profile = []
     for taste_number in range(5):
         taste_field = "profile_{}".format(taste_number)
@@ -93,6 +96,7 @@ def home():
 @app.route('/similar_beer', methods=["GET", "POST"])
 def similar_beer():
     if request.method == "POST":
+        base_beer_idx = prepare_request_data_for_base_beer(request.form)
         requested_profile = prepare_request_data_for_requested_profile(request.form)
         # test_values = [(113, 50), (88, 20), (52, 20), (13, 10)]  # (IPA, fruité, avec un peu de bois)
         # test_values =  [(250,20),(237,30),(58,50)] # (Stout vanille en barique)
@@ -100,31 +104,105 @@ def similar_beer():
         proportion_tensors = [(torch.LongTensor([idx]), proportion) for idx, proportion in requested_profile]
 
         local_beers = beer_extractor.get_local_beers("QC")
-        most_similar_beer = model.create_beer_vector(proportion_tensors)
+        most_similar_beer = model.create_beer_vector(base_beer_idx, proportion_tensors)
         local_similar_beer = [(name, score) for name, score in most_similar_beer if name in local_beers]
         local_similar_beer.sort(key=lambda x: x[1], reverse=True)
 
         output = generate_html_header("Build a beer")
         output += "<a href=/>Home</a>" \
                  "<h1><a href=/similar_beer>Build a beer</a></h1>".format()
+        if base_beer_idx>0 :
+            output += "<h2>Base Beer</h2>"
+            output += format_beer_with_base_info([model.idx_to_beer[base_beer_idx]])
+
         output += "<h2>Requested Profile</h2>"
         output += format_top_taste([(model.idx_to_tag[idx], proportion) for idx, proportion in requested_profile])
         output += "<h2>Suggested drink</h2>"
         output += format_beer_with_base_info([b for b, _ in local_similar_beer[0:10]])
 
     elif request.method == "GET":
+        top_taste_dictionnary = { model.tag_to_idx[document['_id']['tags']]:document['_id']['tags'] for document in checking_extractor.get_tag_top_count(NB_TOP_TASTE)}
+        # local_beers = beer_extractor.get_local_beers("QC")
+
         output = generate_html_header("Build a beer")
+
         output += "<a href=/>Home</a>" \
                  "<h1><a href=/similar_beer>Build a beer</a></h1>".format()
         output += "<h2>Requested Profile</h2>"
         output += "<form name=request_profile method=POST action=/similar_beer>"
+
+        output += "<label for=base_beer>Bière de base</label> " \
+                  "<select name=base_beer>{0}</select></br>".format(format_dictionary_for_select_dropdown(model.idx_to_beer))
         for taste_number in range(5):
             output += "<label for=proportion_{0}>Flavor {0}</label> " \
                       "<select name=profile_{0}>{1}</select> " \
-                      "<input text name=proportion_{0} size=4></br>".format(taste_number, format_dictionary_for_select_dropdown(model.idx_to_tag))
+                      "<input text name=proportion_{0} size=4></br>".format(taste_number, format_dictionary_for_select_dropdown(top_taste_dictionnary))
         output += "</br><input type=submit value=Chercher></form>"
 
     return output
+
+@app.route('/tag/count')
+def display_tag_occurence_count():
+    output = ""
+    for item in list(checking_extractor.get_tag_top_count(75)):
+        output += "{}, {} <br>".format(item['_id']['tags'], item['total_count'] )
+
+    return output
+
+def get_embeddings_for_top_flavors(count):
+    top_tags = checking_extractor.get_tag_top_count(count)
+    all_embeddings = model.get_tag_embedding()
+    embedding_size = all_embeddings.shape[1]
+
+    import numpy as np
+    embedding_vectors = np.zeros((count, embedding_size))
+
+    tag_list = []
+    for new_index, embedding_name in enumerate([document['_id']['tags'] for document in top_tags]):
+        embedding_index = tag_to_idx[embedding_name]
+        tag_list.append(embedding_name)
+        embedding_vectors[new_index,:] = all_embeddings[embedding_index]
+
+    return tag_list, embedding_vectors
+
+@app.route('/tag/2d-vector')
+def display_tag_in_2d_vectors():
+    output = ""
+
+    tags, vector = get_embeddings_for_top_flavors(75)
+
+    # si on les veux toutes
+    # tags = list(tag_to_idx.keys())
+    # vector = model.get_tag_embedding()
+
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=2)
+    fitted_pca = pca.fit_transform(vector)
+    output = ""
+
+    for index, tag in enumerate(tags):
+        output += "{}, {}, {} <br>".format(tag, fitted_pca[index, 0],  fitted_pca[index,1])
+
+    return str(output)
+
+@app.route('/tag/3d-vector')
+def display_tag_in_3d_vectors():
+    output = ""
+
+    tags, vector = get_embeddings_for_top_flavors(75)
+
+    # tags = list(tag_to_idx.keys())
+    # vector = model.get_tag_embedding()
+
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=3)
+    fitted_pca = pca.fit_transform(vector)
+    output = ""
+
+    for index, tag in enumerate(tags):
+        output += "{}, {}, {}, {} <br>".format(tag, fitted_pca[index, 0],  fitted_pca[index,1],  fitted_pca[index,2])
+
+    return str(output)
 
 
 @app.route('/beer/<name>')
