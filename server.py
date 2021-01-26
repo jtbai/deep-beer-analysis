@@ -21,7 +21,7 @@ beer_to_idx = pickle.load(open('./data/beer_vocab.pkl', 'rb'))
 idx_to_beer = {i: b for b, i in beer_to_idx.items()}
 tag_to_idx = pickle.load(open('./data/tag_vocab.pkl', 'rb'))
 
-model = BeerToTasteSkipgram(beer_to_idx, idx_to_beer, tag_to_idx, 5)
+model = BeerToTasteSkipgram(beer_to_idx, idx_to_beer, tag_to_idx, 20)
 model.load_state_dict(torch.load('./vector_model/embedding_model'))
 model = model.eval()
 
