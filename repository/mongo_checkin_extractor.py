@@ -97,7 +97,7 @@ def format_checkins(checkins):
     """
     for checkin in checkins:
         yield Checkin(
-            user=checkin['user_name'],
+            user=checkin['user_id'],
             beer=checkin['beer_name'],
             score=checkin['score'],
             tags=checkin['tags'],
